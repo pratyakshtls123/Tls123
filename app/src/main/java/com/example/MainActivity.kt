@@ -39,8 +39,8 @@ class MainActivity : ComponentActivity() {
                         MainMatrixScreen(viewModel = viewModel)
                     } else {
                         LoginGateScreen(
-                            onUnlock = {
-                                viewModel.authenticate("Hansooyoung70010")
+                            onAuthenticate = { loginId, password ->
+                                viewModel.authenticate(loginId, password)
                             }
                         )
                     }

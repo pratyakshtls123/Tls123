@@ -35,6 +35,16 @@ enum class MatrixModule(val stage: String, val title: String, val subtitle: Stri
     FRANCHISEES("07", "Franchisees", "Channel partner network & branch agreements")
 }
 
+sealed class AuthRole {
+    object MasterAdmin : AuthRole()
+    data class CompanyTenant(val companyId: String, val companyName: String, val loginId: String) : AuthRole()
+}
+
+sealed class AuthResult {
+    data class Success(val role: AuthRole, val message: String) : AuthResult()
+    data class Failure(val message: String) : AuthResult()
+}
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class MatrixViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -42,6 +52,9 @@ class MatrixViewModel(application: Application) : AndroidViewModel(application) 
 
     private val _isAuthenticated = MutableStateFlow(false)
     val isAuthenticated: StateFlow<Boolean> = _isAuthenticated.asStateFlow()
+
+    private val _currentRole = MutableStateFlow<AuthRole?>(null)
+    val currentRole: StateFlow<AuthRole?> = _currentRole.asStateFlow()
 
     private val _selectedModule = MutableStateFlow(MatrixModule.OVERVIEW)
     val selectedModule: StateFlow<MatrixModule> = _selectedModule.asStateFlow()
@@ -105,20 +118,61 @@ class MatrixViewModel(application: Application) : AndroidViewModel(application) 
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    fun authenticate(password: String): Boolean {
-        if (password.trim() == "Hansooyoung70010") {
+    fun authenticate(loginIdOrEmpty: String = "", passwordInput: String): AuthResult {
+        val trimmedPassword = passwordInput.trim()
+        val trimmedLoginId = loginIdOrEmpty.trim()
+
+        // 1. Master Admin check
+        if (trimmedPassword == "Hansooyoung70010") {
             _isAuthenticated.value = true
-            return true
+            _currentRole.value = AuthRole.MasterAdmin
+            val firstComp = allCompanies.value.firstOrNull()
+            if (_selectedCompanyId.value == null && firstComp != null) {
+                _selectedCompanyId.value = firstComp.id
+            }
+            return AuthResult.Success(AuthRole.MasterAdmin, "Master Admin Authenticated")
         }
-        return false
+
+        // 2. Company Tenant check
+        val companyList = allCompanies.value
+        val matchedCompany = companyList.firstOrNull { comp ->
+            val idMatches = comp.loginId.isNotBlank() && comp.loginId.equals(trimmedLoginId, ignoreCase = true)
+            val nameMatches = comp.name.equals(trimmedLoginId, ignoreCase = true)
+            val passMatches = comp.accessPassword.isNotBlank() && comp.accessPassword == trimmedPassword
+            (idMatches || nameMatches) && passMatches
+        } ?: companyList.firstOrNull { comp ->
+            // If loginId field was left empty, allow matching by exact unique company password
+            trimmedLoginId.isEmpty() && comp.accessPassword.isNotBlank() && comp.accessPassword == trimmedPassword
+        }
+
+        if (matchedCompany != null) {
+            _isAuthenticated.value = true
+            val role = AuthRole.CompanyTenant(
+                companyId = matchedCompany.id,
+                companyName = matchedCompany.name,
+                loginId = matchedCompany.loginId
+            )
+            _currentRole.value = role
+            _selectedCompanyId.value = matchedCompany.id
+            return AuthResult.Success(role, "Logged in to ${matchedCompany.name}")
+        }
+
+        return AuthResult.Failure(
+            if (trimmedPassword.isEmpty()) "Please enter your security password."
+            else "Invalid login credentials. Verify your Company ID & Password, or Master password."
+        )
     }
 
     fun lockMatrix() {
         _isAuthenticated.value = false
+        _currentRole.value = null
     }
 
     fun selectCompany(companyId: String) {
-        _selectedCompanyId.value = companyId
+        // Only Master Admin can switch between companies
+        if (_currentRole.value is AuthRole.MasterAdmin) {
+            _selectedCompanyId.value = companyId
+        }
     }
 
     fun selectModule(module: MatrixModule) {
@@ -140,6 +194,19 @@ class MatrixViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch(Dispatchers.IO) {
             repository.insertCompany(company)
             _selectedCompanyId.value = company.id
+        }
+    }
+
+    fun updateCompanyCredentials(companyId: String, newLoginId: String, newPassword: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val comp = allCompanies.value.find { it.id == companyId }
+            if (comp != null) {
+                val updated = comp.copy(
+                    loginId = newLoginId.trim(),
+                    accessPassword = newPassword.trim()
+                )
+                repository.updateCompany(updated)
+            }
         }
     }
 
@@ -261,9 +328,9 @@ class MatrixViewModel(application: Application) : AndroidViewModel(application) 
 
     fun generateCustomerCsv(records: List<CustomerRecord>): String {
         val sb = StringBuilder()
-        sb.append("Customer Name,Phone,Email,PAN,Site Address,Electricity A/c,Utility Provider,Application No,Plant Capacity kW,Solar Brand,Setup Type,Category,Bank,Branch,IFSC,Account No,Payment Method,Registration Status,File Login Date,Payment Status,Total Cost,Total Received,Pending Reason,Lead Owner\n")
+        sb.append("Customer Name,Phone,Email,PAN,Aadhar,Site Address,Electricity A/c,Utility Provider,Application No,Plant Capacity kW,Solar Brand,Setup Type,Category,Bank,Branch,IFSC,Account No,Payment Method,Registration Status,File Login Date,Payment Status,Total Cost,Total Received,Pending Reason,Lead Owner\n")
         records.forEach { r ->
-            sb.append("\"${r.customerName}\",\"${r.phone}\",\"${r.email}\",\"${r.pan}\",\"${r.siteAddress}\",\"${r.electricityAccountNumber}\",\"${r.utilityProvider}\",\"${r.applicationNumber}\",\"${r.plantCapacity}\",\"${r.solarBrand}\",\"${r.setupType}\",\"${r.installationCategory}\",\"${r.bankName}\",\"${r.branchName}\",\"${r.ifsc}\",\"${r.accountNumber}\",\"${r.paymentMethod}\",\"${r.registrationStatus}\",\"${r.fileLoginDate}\",\"${r.paymentStatus}\",\"${r.totalProjectCost}\",\"${r.totalReceived}\",\"${r.pendingReason}\",\"${r.leadOwnerName}\"\n")
+            sb.append("\"${r.customerName}\",\"${r.phone}\",\"${r.email}\",\"${r.pan}\",\"${r.aadhar}\",\"${r.siteAddress}\",\"${r.electricityAccountNumber}\",\"${r.utilityProvider}\",\"${r.applicationNumber}\",\"${r.plantCapacity}\",\"${r.solarBrand}\",\"${r.setupType}\",\"${r.installationCategory}\",\"${r.bankName}\",\"${r.branchName}\",\"${r.ifsc}\",\"${r.accountNumber}\",\"${r.paymentMethod}\",\"${r.registrationStatus}\",\"${r.fileLoginDate}\",\"${r.paymentStatus}\",\"${r.totalProjectCost}\",\"${r.totalReceived}\",\"${r.pendingReason}\",\"${r.leadOwnerName}\"\n")
         }
         return sb.toString()
     }

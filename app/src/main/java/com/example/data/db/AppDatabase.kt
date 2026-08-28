@@ -28,7 +28,7 @@ import kotlinx.coroutines.launch
         EmployeeRecord::class,
         FranchiseeRecord::class
     ],
-    version = 1,
+    version = 3,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -51,7 +51,10 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "starlink_tls123_matrix.db"
-                ).addCallback(DatabaseCallback(scope)).build()
+                )
+                    .fallbackToDestructiveMigration()
+                    .addCallback(DatabaseCallback(scope))
+                    .build()
                 INSTANCE = instance
                 instance
             }
@@ -74,12 +77,14 @@ abstract class AppDatabase : RoomDatabase() {
             val defaultCompanyId = "comp_neelanjali_01"
             val company = CompanyEntity(
                 id = defaultCompanyId,
-                name = "Neelanjali Solar Matrix Pvt Ltd",
+                name = "Neelanjali Industries (Solar Matrix)",
                 logoUrl = "⚡",
                 ownerName = "Pratyaksh Hans",
                 email = "contact@neelanjalisolar.com",
                 phone = "+91 98765 43210",
-                address = "Plot 42, Solar Energy Tech Park, Sector 62, Noida, UP"
+                address = "Plot 42, Solar Energy Tech Park, Sector 62, Noida, UP",
+                loginId = "COM0001",
+                accessPassword = "Neelanjali@123"
             )
             db.companyDao().insertCompany(company)
 
@@ -145,6 +150,7 @@ abstract class AppDatabase : RoomDatabase() {
                     phone = "+91 99887 76655",
                     email = "kavita.rathi@gmail.com",
                     pan = "ABCDE1234F",
+                    aadhar = "5432 8901 2345",
                     siteAddress = "House 89, Sector 15, Gurgaon, Haryana",
                     electricityAccountNumber = "DHBVN-7788990",
                     utilityProvider = "DHBVN",

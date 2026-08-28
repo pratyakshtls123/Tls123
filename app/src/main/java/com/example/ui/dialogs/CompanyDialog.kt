@@ -29,7 +29,9 @@ import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.UploadFile
+import androidx.compose.material.icons.filled.VpnKey
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -95,6 +97,8 @@ fun CompanyDialog(
 
     var name by remember(company) { mutableStateOf(company?.name ?: "") }
     var logoUrl by remember(company) { mutableStateOf(company?.logoUrl ?: "") }
+    var loginId by remember(company) { mutableStateOf(company?.loginId ?: "") }
+    var accessPassword by remember(company) { mutableStateOf(company?.accessPassword ?: "") }
     var ownerName by remember(company) { mutableStateOf(company?.ownerName ?: "") }
     var email by remember(company) { mutableStateOf(company?.email ?: "") }
     var phone by remember(company) { mutableStateOf(company?.phone ?: "") }
@@ -298,6 +302,69 @@ fun CompanyDialog(
                         testTag = "company_name_input"
                     )
 
+                    // Company Portal Login Credentials Card
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(SpaceCardElevated)
+                            .border(1.dp, CosmicIndigo.copy(alpha = 0.4f), RoundedCornerShape(14.dp))
+                            .padding(14.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.VpnKey,
+                                    contentDescription = "Key",
+                                    tint = CosmicCyan,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "Portal Access Credentials",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = CosmicCyan
+                                )
+                            }
+                            Text(
+                                text = "Tenant Security",
+                                fontSize = 10.sp,
+                                color = TextDim
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Provide this Login ID and Password to the company so they can log in and view ONLY their records.",
+                            fontSize = 11.sp,
+                            color = TextMuted,
+                            lineHeight = 15.sp
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        CosmicInputField(
+                            label = "Company Login ID",
+                            value = loginId,
+                            onValueChange = { loginId = it },
+                            placeholder = "e.g. COM0001",
+                            testTag = "company_login_id_input"
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        CosmicInputField(
+                            label = "Company Access Password",
+                            value = accessPassword,
+                            onValueChange = { accessPassword = it },
+                            placeholder = "e.g. Neelanjali@123",
+                            testTag = "company_access_password_input"
+                        )
+                    }
+
                     CosmicInputField(
                         label = "Owner / Director Name",
                         value = ownerName,
@@ -363,6 +430,8 @@ fun CompanyDialog(
                                 val updated = company?.copy(
                                     name = name.trim(),
                                     logoUrl = logoUrl.trim(),
+                                    loginId = loginId.trim(),
+                                    accessPassword = accessPassword.trim(),
                                     ownerName = ownerName.trim(),
                                     email = email.trim(),
                                     phone = phone.trim(),
@@ -371,6 +440,8 @@ fun CompanyDialog(
                                     id = UUID.randomUUID().toString(),
                                     name = name.trim(),
                                     logoUrl = logoUrl.trim(),
+                                    loginId = loginId.trim(),
+                                    accessPassword = accessPassword.trim(),
                                     ownerName = ownerName.trim(),
                                     email = email.trim(),
                                     phone = phone.trim(),

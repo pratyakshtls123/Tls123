@@ -427,6 +427,7 @@ fun CustomerDialog(
     var phone by remember(record) { mutableStateOf(record?.phone ?: "") }
     var email by remember(record) { mutableStateOf(record?.email ?: "") }
     var pan by remember(record) { mutableStateOf(record?.pan ?: "") }
+    var aadhar by remember(record) { mutableStateOf(record?.aadhar ?: "") }
     var siteAddress by remember(record) { mutableStateOf(record?.siteAddress ?: "") }
     var electricityAccountNumber by remember(record) { mutableStateOf(record?.electricityAccountNumber ?: "") }
     var utilityProvider by remember(record) { mutableStateOf(record?.utilityProvider ?: "") }
@@ -501,7 +502,11 @@ fun CustomerDialog(
                     CosmicInputField(label = "Site Installation Address", value = siteAddress, onValueChange = { siteAddress = it }, placeholder = "Full Address", isMultiline = true)
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
                         CosmicInputField(label = "PAN Number", value = pan, onValueChange = { pan = it }, placeholder = "ABCDE1234F", modifier = Modifier.weight(1f))
+                        CosmicInputField(label = "Aadhar No.", value = aadhar, onValueChange = { aadhar = it }, placeholder = "1234 5678 9012", modifier = Modifier.weight(1f))
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
                         CosmicInputField(label = "Electricity A/c No", value = electricityAccountNumber, onValueChange = { electricityAccountNumber = it }, placeholder = "CA / K No.", modifier = Modifier.weight(1f))
+                        CosmicInputField(label = "Utility / Discom Provider", value = utilityProvider, onValueChange = { utilityProvider = it }, placeholder = "DHBVN / TPDDL", modifier = Modifier.weight(1f))
                     }
 
                     Spacer(modifier = Modifier.height(4.dp))
@@ -514,10 +519,7 @@ fun CustomerDialog(
                         CosmicInputField(label = "Installation Category", value = installationCategory, onValueChange = { installationCategory = it }, placeholder = "Residential / Commercial", modifier = Modifier.weight(1f))
                         CosmicInputField(label = "Solar Brand (Panel/Inverter)", value = solarBrand, onValueChange = { solarBrand = it }, placeholder = "Tata / Adani / Growatt", modifier = Modifier.weight(1f))
                     }
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                        CosmicInputField(label = "Utility / Discom Provider", value = utilityProvider, onValueChange = { utilityProvider = it }, placeholder = "DHBVN / TPDDL / MSEDCL", modifier = Modifier.weight(1f))
-                        CosmicInputField(label = "Portal Application No", value = applicationNumber, onValueChange = { applicationNumber = it }, placeholder = "SL-2026-...", modifier = Modifier.weight(1f))
-                    }
+                    CosmicInputField(label = "Portal Application No", value = applicationNumber, onValueChange = { applicationNumber = it }, placeholder = "SL-2026-...")
 
                     Spacer(modifier = Modifier.height(4.dp))
                     Text("3. Financial & Payment Matrix", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = CosmicViolet)
@@ -570,6 +572,7 @@ fun CustomerDialog(
                                     phone = phone.trim(),
                                     email = email.trim(),
                                     pan = pan.trim(),
+                                    aadhar = aadhar.trim(),
                                     siteAddress = siteAddress.trim(),
                                     electricityAccountNumber = electricityAccountNumber.trim(),
                                     utilityProvider = utilityProvider.trim(),
@@ -599,6 +602,7 @@ fun CustomerDialog(
                                     phone = phone.trim(),
                                     email = email.trim(),
                                     pan = pan.trim(),
+                                    aadhar = aadhar.trim(),
                                     siteAddress = siteAddress.trim(),
                                     electricityAccountNumber = electricityAccountNumber.trim(),
                                     utilityProvider = utilityProvider.trim(),

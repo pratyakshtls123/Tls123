@@ -13,6 +13,8 @@ data class CompanyEntity(
     val email: String = "",
     val phone: String = "",
     val address: String = "",
+    val loginId: String = "",
+    val accessPassword: String = "",
     val createdAt: Long = System.currentTimeMillis()
 )
 
@@ -58,6 +60,7 @@ data class CustomerRecord(
     val phone: String = "",
     val email: String = "",
     val pan: String = "",
+    val aadhar: String = "",
     val siteAddress: String = "",
     val electricityAccountNumber: String = "",
     val utilityProvider: String = "",

@@ -26,8 +26,10 @@ import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.VpnKey
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FloatingActionButton
@@ -67,6 +69,7 @@ import com.example.ui.dialogs.CompanyDialog
 import com.example.ui.dialogs.CustomerDialog
 import com.example.ui.dialogs.EmployeeDialog
 import com.example.ui.dialogs.FranchiseeDialog
+import com.example.ui.dialogs.MasterAccessCredentialsDialog
 import com.example.ui.dialogs.SalesDvrDialog
 import com.example.ui.dialogs.TelecallingDialog
 import com.example.ui.theme.CosmicAmber
@@ -85,6 +88,7 @@ import com.example.ui.theme.TextDim
 import com.example.ui.theme.TextLight
 import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextWhite
+import com.example.ui.viewmodel.AuthRole
 import com.example.ui.viewmodel.MatrixModule
 import com.example.ui.viewmodel.MatrixViewModel
 import com.example.util.FormatUtils
@@ -96,12 +100,16 @@ fun MainMatrixScreen(
 ) {
     val context = LocalContext.current
 
+    val currentRole by viewModel.currentRole.collectAsState()
+    val isMasterAdmin = currentRole is AuthRole.MasterAdmin
+    val companyTenant = currentRole as? AuthRole.CompanyTenant
+
     val companies by viewModel.allCompanies.collectAsState()
     val selectedCompanyId by viewModel.selectedCompanyId.collectAsState()
     val selectedModule by viewModel.selectedModule.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
 
-    // Auto-select first company if none selected
+    // Auto-select company
     val currentCompany = companies.find { it.id == selectedCompanyId } ?: companies.firstOrNull()
     if (selectedCompanyId == null && currentCompany != null) {
         viewModel.selectCompany(currentCompany.id)
@@ -135,6 +143,8 @@ fun MainMatrixScreen(
         searchQuery.isBlank() ||
                 it.customerName.contains(searchQuery, ignoreCase = true) ||
                 it.phone.contains(searchQuery, ignoreCase = true) ||
+                it.pan.contains(searchQuery, ignoreCase = true) ||
+                it.aadhar.contains(searchQuery, ignoreCase = true) ||
                 it.paymentStatus.contains(searchQuery, ignoreCase = true) ||
                 it.solarBrand.contains(searchQuery, ignoreCase = true) ||
                 it.applicationNumber.contains(searchQuery, ignoreCase = true)
@@ -172,6 +182,7 @@ fun MainMatrixScreen(
     var showCompanyDropdown by remember { mutableStateOf(false) }
     var companyToEdit by remember { mutableStateOf<CompanyEntity?>(null) }
     var showCompanyModal by remember { mutableStateOf(false) }
+    var showMasterCredentialsDialog by remember { mutableStateOf(false) }
 
     var telecallingToEdit by remember { mutableStateOf<TelecallingRecord?>(null) }
     var showTelecallingDialog by remember { mutableStateOf(false) }
@@ -295,6 +306,42 @@ fun MainMatrixScreen(
 
                 // Company Selector Pill & Lock Action
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (isMasterAdmin) {
+                        // Master Admin Badge
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(CosmicIndigo.copy(alpha = 0.25f))
+                                .border(1.dp, CosmicIndigo, RoundedCornerShape(6.dp))
+                                .padding(horizontal = 6.dp, vertical = 3.dp)
+                        ) {
+                            Text(
+                                text = "👑 ADMIN",
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = CosmicIndigo
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(6.dp))
+                    } else if (companyTenant != null) {
+                        // Company Tenant Badge
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(CosmicViolet.copy(alpha = 0.25f))
+                                .border(1.dp, CosmicViolet, RoundedCornerShape(6.dp))
+                                .padding(horizontal = 6.dp, vertical = 3.dp)
+                        ) {
+                            Text(
+                                text = "🏢 ${companyTenant.loginId.ifEmpty { "PORTAL" }}",
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = CosmicViolet
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(6.dp))
+                    }
+
                     Box {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -302,7 +349,11 @@ fun MainMatrixScreen(
                                 .clip(RoundedCornerShape(100.dp))
                                 .background(SpaceCardElevated)
                                 .border(1.dp, SpaceBorder, RoundedCornerShape(100.dp))
-                                .clickable { showCompanyDropdown = true }
+                                .clickable {
+                                    if (isMasterAdmin) {
+                                        showCompanyDropdown = true
+                                    }
+                                }
                                 .padding(horizontal = 8.dp, vertical = 4.dp)
                                 .testTag("company_selector_pill")
                         ) {
@@ -319,74 +370,100 @@ fun MainMatrixScreen(
                                 color = TextLight,
                                 maxLines = 1
                             )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Icon(
-                                imageVector = Icons.Default.ExpandMore,
-                                contentDescription = "More",
-                                tint = TextDim,
-                                modifier = Modifier.size(14.dp)
-                            )
+                            if (isMasterAdmin) {
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Icon(
+                                    imageVector = Icons.Default.ExpandMore,
+                                    contentDescription = "More",
+                                    tint = TextDim,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                            }
                         }
 
-                        DropdownMenu(
-                            expanded = showCompanyDropdown,
-                            onDismissRequest = { showCompanyDropdown = false },
-                            modifier = Modifier
-                                .background(SpaceCard)
-                                .border(1.dp, SpaceBorder)
-                        ) {
-                            companies.forEach { comp ->
+                        if (isMasterAdmin) {
+                            DropdownMenu(
+                                expanded = showCompanyDropdown,
+                                onDismissRequest = { showCompanyDropdown = false },
+                                modifier = Modifier
+                                    .background(SpaceCard)
+                                    .border(1.dp, SpaceBorder)
+                            ) {
+                                companies.forEach { comp ->
+                                    DropdownMenuItem(
+                                        text = {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                CompanyLogoView(
+                                                    logo = comp.logoUrl.ifEmpty { "⚡" },
+                                                    size = 22.dp,
+                                                    shape = CircleShape
+                                                )
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                Column {
+                                                    Text(
+                                                        text = comp.name,
+                                                        color = if (comp.id == currentCompany?.id) CosmicViolet else TextWhite,
+                                                        fontWeight = if (comp.id == currentCompany?.id) FontWeight.Bold else FontWeight.Normal,
+                                                        fontSize = 13.sp
+                                                    )
+                                                    if (comp.loginId.isNotEmpty()) {
+                                                        Text(
+                                                            text = "ID: ${comp.loginId}",
+                                                            color = TextDim,
+                                                            fontSize = 10.sp
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        onClick = {
+                                            viewModel.selectCompany(comp.id)
+                                            showCompanyDropdown = false
+                                        }
+                                    )
+                                }
                                 DropdownMenuItem(
                                     text = {
                                         Row(verticalAlignment = Alignment.CenterVertically) {
-                                            CompanyLogoView(
-                                                logo = comp.logoUrl.ifEmpty { "⚡" },
-                                                size = 22.dp,
-                                                shape = CircleShape
-                                            )
-                                            Spacer(modifier = Modifier.width(8.dp))
-                                            Text(
-                                                text = comp.name,
-                                                color = if (comp.id == currentCompany?.id) CosmicViolet else TextWhite,
-                                                fontWeight = if (comp.id == currentCompany?.id) FontWeight.Bold else FontWeight.Normal,
-                                                fontSize = 13.sp
-                                            )
+                                            Icon(Icons.Default.VpnKey, contentDescription = "Security", tint = CosmicCyan, modifier = Modifier.size(16.dp))
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text("Manage Company IDs & Passwords", color = CosmicCyan, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                                         }
                                     },
                                     onClick = {
-                                        viewModel.selectCompany(comp.id)
                                         showCompanyDropdown = false
+                                        showMasterCredentialsDialog = true
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(Icons.Default.Edit, contentDescription = "Edit", tint = CosmicIndigo, modifier = Modifier.size(16.dp))
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text("Edit Active Company", color = CosmicIndigo, fontSize = 13.sp)
+                                        }
+                                    },
+                                    onClick = {
+                                        showCompanyDropdown = false
+                                        companyToEdit = currentCompany
+                                        showCompanyModal = true
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(Icons.Default.Add, contentDescription = "Add", tint = CosmicEmerald, modifier = Modifier.size(16.dp))
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text("+ Register New Company", color = CosmicEmerald, fontSize = 13.sp)
+                                        }
+                                    },
+                                    onClick = {
+                                        showCompanyDropdown = false
+                                        companyToEdit = null
+                                        showCompanyModal = true
                                     }
                                 )
                             }
-                            DropdownMenuItem(
-                                text = {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(Icons.Default.Edit, contentDescription = "Edit", tint = CosmicIndigo, modifier = Modifier.size(16.dp))
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text("Edit Active Company", color = CosmicIndigo, fontSize = 13.sp)
-                                    }
-                                },
-                                onClick = {
-                                    showCompanyDropdown = false
-                                    companyToEdit = currentCompany
-                                    showCompanyModal = true
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(Icons.Default.Add, contentDescription = "Add", tint = CosmicEmerald, modifier = Modifier.size(16.dp))
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text("+ Register New Company", color = CosmicEmerald, fontSize = 13.sp)
-                                    }
-                                },
-                                onClick = {
-                                    showCompanyDropdown = false
-                                    companyToEdit = null
-                                    showCompanyModal = true
-                                }
-                            )
                         }
                     }
 
@@ -545,7 +622,10 @@ fun MainMatrixScreen(
                             bankingDvrList = bankingDvrRecords,
                             employeeList = employeeRecords,
                             franchiseeList = franchiseeRecords,
-                            onNavigateModule = { viewModel.selectModule(it) }
+                            onNavigateModule = { viewModel.selectModule(it) },
+                            isMasterAdmin = isMasterAdmin,
+                            companies = companies,
+                            onOpenCompanyAccessManager = { showMasterCredentialsDialog = true }
                         )
                     }
                     MatrixModule.TELECALLING -> {
@@ -715,6 +795,26 @@ fun MainMatrixScreen(
             onSave = {
                 viewModel.saveFranchisee(it)
                 showFranchiseeDialog = false
+            }
+        )
+    }
+
+    if (showMasterCredentialsDialog) {
+        MasterAccessCredentialsDialog(
+            companies = companies,
+            onDismiss = { showMasterCredentialsDialog = false },
+            onSaveCredentials = { compId, newLoginId, newPass ->
+                viewModel.updateCompanyCredentials(compId, newLoginId, newPass)
+            },
+            onEditCompanyProfile = { comp ->
+                showMasterCredentialsDialog = false
+                companyToEdit = comp
+                showCompanyModal = true
+            },
+            onAddNewCompany = {
+                showMasterCredentialsDialog = false
+                companyToEdit = null
+                showCompanyModal = true
             }
         )
     }

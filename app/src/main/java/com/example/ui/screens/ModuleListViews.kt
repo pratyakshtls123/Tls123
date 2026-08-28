@@ -60,9 +60,11 @@ import com.example.ui.theme.CosmicViolet
 import com.example.ui.theme.SpaceBorder
 import com.example.ui.theme.SpaceCard
 import com.example.ui.theme.SpaceCardElevated
+import com.example.ui.theme.TextDark
 import com.example.ui.theme.TextDim
 import com.example.ui.theme.TextLight
 import com.example.ui.theme.TextMuted
+import com.example.ui.theme.TextWhite
 import com.example.ui.theme.TextWhite
 import com.example.util.FormatUtils
 
@@ -421,6 +423,31 @@ fun CustomerListView(
                     if (item.siteAddress.isNotBlank()) {
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(text = "📍 ${item.siteAddress}", fontSize = 11.sp, color = TextDim, maxLines = 1)
+                    }
+
+                    if (item.pan.isNotBlank() || item.aadhar.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (item.pan.isNotBlank()) {
+                                Text(
+                                    text = "PAN: ${item.pan}",
+                                    fontSize = 11.sp,
+                                    color = CosmicIndigo,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                if (item.aadhar.isNotBlank()) {
+                                    Text(text = "  •  ", fontSize = 11.sp, color = TextDark)
+                                }
+                            }
+                            if (item.aadhar.isNotBlank()) {
+                                Text(
+                                    text = "Aadhar: ${item.aadhar}",
+                                    fontSize = 11.sp,
+                                    color = CosmicCyan,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
                     }
 
                     if (item.solarBrand.isNotBlank() || item.bankName.isNotBlank()) {

@@ -32,6 +32,11 @@ import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.TrendingUp
+import androidx.compose.material.icons.filled.Business
+import androidx.compose.material.icons.filled.Key
+import androidx.compose.material.icons.filled.VpnKey
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -49,11 +54,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.BankPendencyRecord
 import com.example.data.model.BankingDvrRecord
+import com.example.data.model.CompanyEntity
 import com.example.data.model.CustomerRecord
 import com.example.data.model.EmployeeRecord
 import com.example.data.model.FranchiseeRecord
 import com.example.data.model.SalesDvrRecord
 import com.example.data.model.TelecallingRecord
+import com.example.ui.components.CompanyLogoView
 import com.example.ui.theme.CosmicAmber
 import com.example.ui.theme.CosmicCyan
 import com.example.ui.theme.CosmicEmerald
@@ -64,6 +71,7 @@ import com.example.ui.theme.CosmicViolet
 import com.example.ui.theme.SpaceBorder
 import com.example.ui.theme.SpaceCard
 import com.example.ui.theme.SpaceCardElevated
+import com.example.ui.theme.TextDark
 import com.example.ui.theme.TextDim
 import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextWhite
@@ -81,6 +89,9 @@ fun OverviewDashboard(
     employeeList: List<EmployeeRecord>,
     franchiseeList: List<FranchiseeRecord>,
     onNavigateModule: (MatrixModule) -> Unit,
+    isMasterAdmin: Boolean = false,
+    companies: List<CompanyEntity> = emptyList(),
+    onOpenCompanyAccessManager: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val totalProjectCost = customerList.sumOf { it.totalProjectCost }
@@ -209,6 +220,135 @@ fun OverviewDashboard(
                         fontSize = 11.sp,
                         color = TextDim
                     )
+                }
+            }
+        }
+
+        // Master Admin: Company Access & Credentials Card
+        if (isMasterAdmin) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(
+                        Brush.linearGradient(
+                            listOf(
+                                CosmicIndigo.copy(alpha = 0.2f),
+                                CosmicCyan.copy(alpha = 0.08f),
+                                SpaceCardElevated
+                            )
+                        )
+                    )
+                    .border(1.dp, CosmicIndigo.copy(alpha = 0.5f), RoundedCornerShape(18.dp))
+                    .padding(16.dp)
+            ) {
+                Column {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(34.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(CosmicIndigo.copy(alpha = 0.3f))
+                                    .border(1.dp, CosmicIndigo, RoundedCornerShape(10.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.VpnKey,
+                                    contentDescription = "Access Hub",
+                                    tint = CosmicCyan,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = "Company Access & Credentials",
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = TextWhite
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(4.dp))
+                                            .background(CosmicIndigo)
+                                            .padding(horizontal = 5.dp, vertical = 1.dp)
+                                    ) {
+                                        Text("ADMIN", fontSize = 8.sp, fontWeight = FontWeight.Bold, color = TextWhite)
+                                    }
+                                }
+                                Text(
+                                    text = "${companies.size} registered company tenant profiles",
+                                    fontSize = 11.sp,
+                                    color = TextMuted
+                                )
+                            }
+                        }
+
+                        Button(
+                            onClick = onOpenCompanyAccessManager,
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = CosmicIndigo),
+                            modifier = Modifier.testTag("btn_manage_credentials_dashboard")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Key,
+                                contentDescription = "Manage",
+                                tint = TextWhite,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Manage IDs & Passwords",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextWhite
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Company quick tags preview
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        companies.forEach { comp ->
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(SpaceCard)
+                                    .border(1.dp, SpaceBorder, RoundedCornerShape(8.dp))
+                                    .clickable { onOpenCompanyAccessManager() }
+                                    .padding(horizontal = 8.dp, vertical = 5.dp)
+                            ) {
+                                CompanyLogoView(logo = comp.logoUrl, size = 16.dp, shape = CircleShape)
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = comp.name,
+                                    fontSize = 11.sp,
+                                    color = TextWhite,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = if (comp.loginId.isNotBlank()) "ID: ${comp.loginId}" else "No ID",
+                                    fontSize = 10.sp,
+                                    color = if (comp.loginId.isNotBlank()) CosmicCyan else CosmicAmber,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }

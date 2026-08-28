@@ -91,7 +91,12 @@ object PrintAndExcelUtils {
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
 
-            val chooser = Intent.createChooser(sendIntent, "Open / Print Excel ($fileName)")
+            val chooser = Intent.createChooser(sendIntent, "Open / Print Excel ($fileName)").apply {
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                if (context !is Activity) {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+            }
             context.startActivity(chooser)
             Toast.makeText(context, "Excel file ready: $fileName", Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {

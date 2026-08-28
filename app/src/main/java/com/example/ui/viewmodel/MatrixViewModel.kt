@@ -71,52 +71,55 @@ class MatrixViewModel(application: Application) : AndroidViewModel(application) 
     init {
         val db = AppDatabase.getDatabase(application, viewModelScope)
         repository = MatrixRepository(db)
+        viewModelScope.launch(Dispatchers.IO) {
+            AppDatabase.ensureCompanyCredentials(db)
+        }
     }
 
     val allCompanies: StateFlow<List<CompanyEntity>> = repository.allCompanies
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val telecallingRecords: StateFlow<List<TelecallingRecord>> = _selectedCompanyId
         .flatMapLatest { companyId ->
             if (companyId != null) repository.getTelecallingRecords(companyId) else flowOf(emptyList())
         }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val salesDvrRecords: StateFlow<List<SalesDvrRecord>> = _selectedCompanyId
         .flatMapLatest { companyId ->
             if (companyId != null) repository.getSalesDvrRecords(companyId) else flowOf(emptyList())
         }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val customerRecords: StateFlow<List<CustomerRecord>> = _selectedCompanyId
         .flatMapLatest { companyId ->
             if (companyId != null) repository.getCustomerRecords(companyId) else flowOf(emptyList())
         }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val bankPendencyRecords: StateFlow<List<BankPendencyRecord>> = _selectedCompanyId
         .flatMapLatest { companyId ->
             if (companyId != null) repository.getBankPendencyRecords(companyId) else flowOf(emptyList())
         }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val bankingDvrRecords: StateFlow<List<BankingDvrRecord>> = _selectedCompanyId
         .flatMapLatest { companyId ->
             if (companyId != null) repository.getBankingDvrRecords(companyId) else flowOf(emptyList())
         }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val employeeRecords: StateFlow<List<EmployeeRecord>> = _selectedCompanyId
         .flatMapLatest { companyId ->
             if (companyId != null) repository.getEmployeeRecords(companyId) else flowOf(emptyList())
         }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val franchiseeRecords: StateFlow<List<FranchiseeRecord>> = _selectedCompanyId
         .flatMapLatest { companyId ->
             if (companyId != null) repository.getFranchiseeRecords(companyId) else flowOf(emptyList())
         }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     fun authenticate(loginIdOrEmpty: String = "", passwordInput: String): AuthResult {
         val trimmedPassword = passwordInput.trim()
@@ -127,17 +130,38 @@ class MatrixViewModel(application: Application) : AndroidViewModel(application) 
             _isAuthenticated.value = true
             _currentRole.value = AuthRole.MasterAdmin
             val firstComp = allCompanies.value.firstOrNull()
-            if (_selectedCompanyId.value == null && firstComp != null) {
-                _selectedCompanyId.value = firstComp.id
-            }
+            _selectedCompanyId.value = firstComp?.id ?: "comp_neelanjali_01"
             return AuthResult.Success(AuthRole.MasterAdmin, "Master Admin Authenticated")
         }
 
-        // 2. Company Tenant check
+        // 2. Default Seed Check for Neelanjali Industries
+        val isDefaultNeelanjaliId = trimmedLoginId.isEmpty() ||
+                trimmedLoginId.equals("COM0001", ignoreCase = true) ||
+                trimmedLoginId.contains("neelanjali", ignoreCase = true)
+        val isDefaultNeelanjaliPass = trimmedPassword == "Neelanjali@123"
+
+        if (isDefaultNeelanjaliId && isDefaultNeelanjaliPass) {
+            val neelanjaliId = "comp_neelanjali_01"
+            val companyInList = allCompanies.value.firstOrNull { it.id == neelanjaliId || it.loginId.equals("COM0001", ignoreCase = true) }
+            val companyName = companyInList?.name ?: "Neelanjali Industries (Solar Matrix)"
+            val companyLoginId = companyInList?.loginId ?: "COM0001"
+
+            _isAuthenticated.value = true
+            val role = AuthRole.CompanyTenant(
+                companyId = neelanjaliId,
+                companyName = companyName,
+                loginId = companyLoginId
+            )
+            _currentRole.value = role
+            _selectedCompanyId.value = neelanjaliId
+            return AuthResult.Success(role, "Logged in to $companyName")
+        }
+
+        // 3. Dynamic Company Tenant check from loaded database companies
         val companyList = allCompanies.value
         val matchedCompany = companyList.firstOrNull { comp ->
             val idMatches = comp.loginId.isNotBlank() && comp.loginId.equals(trimmedLoginId, ignoreCase = true)
-            val nameMatches = comp.name.equals(trimmedLoginId, ignoreCase = true)
+            val nameMatches = comp.name.contains(trimmedLoginId, ignoreCase = true)
             val passMatches = comp.accessPassword.isNotBlank() && comp.accessPassword == trimmedPassword
             (idMatches || nameMatches) && passMatches
         } ?: companyList.firstOrNull { comp ->

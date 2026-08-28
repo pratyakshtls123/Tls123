@@ -21,19 +21,25 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.AccountBalance
+import androidx.compose.material.icons.filled.AccountBalanceWallet
+import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Assignment
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Handshake
+import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Receipt
+import androidx.compose.material.icons.filled.SolarPower
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.TrendingUp
-import androidx.compose.material.icons.filled.Business
-import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.VpnKey
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -75,6 +81,7 @@ import com.example.ui.theme.TextDark
 import com.example.ui.theme.TextDim
 import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextWhite
+import com.example.ui.viewmodel.AuthRole
 import com.example.ui.viewmodel.MatrixModule
 import com.example.util.FormatUtils
 
@@ -90,13 +97,20 @@ fun OverviewDashboard(
     franchiseeList: List<FranchiseeRecord>,
     onNavigateModule: (MatrixModule) -> Unit,
     isMasterAdmin: Boolean = false,
+    currentRole: AuthRole? = null,
     companies: List<CompanyEntity> = emptyList(),
     onOpenCompanyAccessManager: () -> Unit = {},
+    onLogout: () -> Unit = {},
+    onPrintSummary: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val totalProjectCost = customerList.sumOf { it.totalProjectCost }
     val totalReceived = customerList.sumOf { it.totalReceived }
     val pendingBalance = totalProjectCost - totalReceived
+    val totalInstallationKw = customerList.sumOf { it.plantCapacity }
+    val totalInstallations = customerList.size
+    val totalMoneyMade = totalReceived
+    val tenantRole = currentRole as? AuthRole.CompanyTenant
 
     Column(
         modifier = modifier
@@ -105,7 +119,299 @@ fun OverviewDashboard(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Hero Financial Pipeline Banner
+        // Active Session Bar with Logout Option
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(14.dp))
+                .background(SpaceCard)
+                .border(1.dp, SpaceBorder, RoundedCornerShape(14.dp))
+                .padding(horizontal = 14.dp, vertical = 10.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clip(CircleShape)
+                            .background(
+                                if (isMasterAdmin) CosmicIndigo.copy(alpha = 0.2f)
+                                else CosmicViolet.copy(alpha = 0.2f)
+                            )
+                            .border(
+                                1.dp,
+                                if (isMasterAdmin) CosmicIndigo.copy(alpha = 0.5f)
+                                else CosmicViolet.copy(alpha = 0.5f),
+                                CircleShape
+                            )
+                    ) {
+                        Icon(
+                            imageVector = if (isMasterAdmin) Icons.Default.AdminPanelSettings else Icons.Default.Business,
+                            contentDescription = "Session",
+                            tint = if (isMasterAdmin) CosmicIndigo else CosmicViolet,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = if (isMasterAdmin) "Master Admin Session" else (tenantRole?.companyName ?: "Company Session"),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextWhite
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(CosmicEmerald.copy(alpha = 0.15f))
+                                    .padding(horizontal = 5.dp, vertical = 1.dp)
+                            ) {
+                                Text(
+                                    text = "ACTIVE",
+                                    fontSize = 8.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = CosmicEmerald
+                                )
+                            }
+                        }
+                        Text(
+                            text = if (isMasterAdmin) "Full multi-tenant control enabled" else "Portal ID: ${tenantRole?.loginId ?: "Tenant"}",
+                            fontSize = 10.sp,
+                            color = TextDim
+                        )
+                    }
+                }
+
+                // Logout Action Pill
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(CosmicRose.copy(alpha = 0.15f))
+                        .border(1.dp, CosmicRose.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+                        .clickable { onLogout() }
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                        .testTag("btn_logout_overview")
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.Logout,
+                        contentDescription = "Logout",
+                        tint = CosmicRose,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "Log Out",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = CosmicRose
+                    )
+                }
+            }
+        }
+
+        // =========================================================================
+        // EXECUTIVE SOLAR KEY METRICS: Total kW, Total Installations, Total Money Made
+        // =========================================================================
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            // 1. Total KW of Installation
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                CosmicCyan.copy(alpha = 0.18f),
+                                SpaceCard
+                            )
+                        )
+                    )
+                    .border(1.dp, CosmicCyan.copy(alpha = 0.45f), RoundedCornerShape(16.dp))
+                    .padding(12.dp)
+                    .testTag("metric_total_kw")
+            ) {
+                Column {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .size(28.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(CosmicCyan.copy(alpha = 0.25f))
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Bolt,
+                                contentDescription = "Total kW",
+                                tint = CosmicCyan,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                        Text(
+                            text = "SOLAR",
+                            fontSize = 8.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = CosmicCyan
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text(
+                        text = FormatUtils.formatKw(totalInstallationKw),
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Black,
+                        color = TextWhite
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "Total Installation Capacity",
+                        fontSize = 10.sp,
+                        color = TextMuted,
+                        lineHeight = 13.sp
+                    )
+                }
+            }
+
+            // 2. Total Installation Count
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                CosmicViolet.copy(alpha = 0.18f),
+                                SpaceCard
+                            )
+                        )
+                    )
+                    .border(1.dp, CosmicViolet.copy(alpha = 0.45f), RoundedCornerShape(16.dp))
+                    .padding(12.dp)
+                    .testTag("metric_total_installations")
+            ) {
+                Column {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .size(28.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(CosmicViolet.copy(alpha = 0.25f))
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.SolarPower,
+                                contentDescription = "Total Installations",
+                                tint = CosmicViolet,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                        Text(
+                            text = "PLANTS",
+                            fontSize = 8.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = CosmicViolet
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text(
+                        text = "$totalInstallations Sites",
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Black,
+                        color = TextWhite
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "Total Installations",
+                        fontSize = 10.sp,
+                        color = TextMuted,
+                        lineHeight = 13.sp
+                    )
+                }
+            }
+
+            // 3. Total Money Made (Total Collections)
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                CosmicEmerald.copy(alpha = 0.18f),
+                                SpaceCard
+                            )
+                        )
+                    )
+                    .border(1.dp, CosmicEmerald.copy(alpha = 0.45f), RoundedCornerShape(16.dp))
+                    .padding(12.dp)
+                    .testTag("metric_total_money_made")
+            ) {
+                Column {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .size(28.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(CosmicEmerald.copy(alpha = 0.25f))
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.MonetizationOn,
+                                contentDescription = "Total Money Made",
+                                tint = CosmicEmerald,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                        Text(
+                            text = "REALIZED",
+                            fontSize = 8.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = CosmicEmerald
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text(
+                        text = FormatUtils.formatCurrency(totalMoneyMade),
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Black,
+                        color = CosmicEmerald
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "Total Money Made",
+                        fontSize = 10.sp,
+                        color = TextMuted,
+                        lineHeight = 13.sp
+                    )
+                }
+            }
+        }
+
+        // Hero Financial Pipeline Banner & Print Button
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -120,7 +426,7 @@ fun OverviewDashboard(
                     )
                 )
                 .border(1.dp, CosmicViolet.copy(alpha = 0.4f), RoundedCornerShape(20.dp))
-                .padding(20.dp)
+                .padding(18.dp)
         ) {
             Column {
                 Row(
@@ -144,30 +450,49 @@ fun OverviewDashboard(
                             )
                         }
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Financial Matrix Summary",
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = TextWhite
-                        )
+                        Column {
+                            Text(
+                                text = "Financial Matrix Summary",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextWhite
+                            )
+                            Text(
+                                text = "Consolidated revenue & plant ledger",
+                                fontSize = 10.sp,
+                                color = TextMuted
+                            )
+                        }
                     }
-                    Box(
+
+                    // Print / Export Summary Button
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
-                            .clip(RoundedCornerShape(100.dp))
-                            .background(CosmicEmerald.copy(alpha = 0.15f))
-                            .border(1.dp, CosmicEmerald.copy(alpha = 0.3f), RoundedCornerShape(100.dp))
-                            .padding(horizontal = 8.dp, vertical = 2.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(CosmicCyan.copy(alpha = 0.15f))
+                            .border(1.dp, CosmicCyan.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+                            .clickable { onPrintSummary() }
+                            .padding(horizontal = 10.dp, vertical = 6.dp)
+                            .testTag("btn_print_summary")
                     ) {
+                        Icon(
+                            imageVector = Icons.Default.Print,
+                            contentDescription = "Print Summary",
+                            tint = CosmicCyan,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(5.dp))
                         Text(
-                            text = "LIVE SYNC",
-                            fontSize = 10.sp,
+                            text = "Print / Excel",
+                            fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
-                            color = CosmicEmerald
+                            color = CosmicCyan
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -185,7 +510,7 @@ fun OverviewDashboard(
                     }
                     // Received
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Realized Collections", fontSize = 11.sp, color = TextMuted)
+                        Text("Total Money Made", fontSize = 11.sp, color = TextMuted)
                         Text(
                             text = FormatUtils.formatCurrency(totalReceived),
                             fontSize = 16.sp,
@@ -216,9 +541,10 @@ fun OverviewDashboard(
                     )
                     Spacer(modifier = Modifier.weight(1f))
                     Text(
-                        text = "${customerList.size} Projects",
+                        text = "$totalInstallations Installations • ${FormatUtils.formatKw(totalInstallationKw)}",
                         fontSize = 11.sp,
-                        color = TextDim
+                        color = CosmicCyan,
+                        fontWeight = FontWeight.SemiBold
                     )
                 }
             }

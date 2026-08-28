@@ -71,6 +71,30 @@ abstract class AppDatabase : RoomDatabase() {
                     }
                 }
             }
+
+            override fun onOpen(db: SupportSQLiteDatabase) {
+                super.onOpen(db)
+                INSTANCE?.let { database ->
+                    scope.launch(Dispatchers.IO) {
+                        ensureCompanyCredentials(database)
+                    }
+                }
+            }
+        }
+
+        suspend fun ensureCompanyCredentials(db: AppDatabase) {
+            val defaultCompanyId = "comp_neelanjali_01"
+            val existing = db.companyDao().getCompanyById(defaultCompanyId)
+            if (existing == null) {
+                populateInitialData(db)
+            } else if (existing.loginId != "COM0001" || existing.accessPassword != "Neelanjali@123") {
+                db.companyDao().updateCompany(
+                    existing.copy(
+                        loginId = "COM0001",
+                        accessPassword = "Neelanjali@123"
+                    )
+                )
+            }
         }
 
         suspend fun populateInitialData(db: AppDatabase) {

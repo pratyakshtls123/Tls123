@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -19,6 +20,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Business
@@ -28,6 +30,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.VpnKey
 import androidx.compose.material3.DropdownMenu
@@ -69,7 +72,9 @@ import com.example.ui.dialogs.CompanyDialog
 import com.example.ui.dialogs.CustomerDialog
 import com.example.ui.dialogs.EmployeeDialog
 import com.example.ui.dialogs.FranchiseeDialog
+import com.example.ui.dialogs.LogoutConfirmationDialog
 import com.example.ui.dialogs.MasterAccessCredentialsDialog
+import com.example.ui.dialogs.PrintExportDialog
 import com.example.ui.dialogs.SalesDvrDialog
 import com.example.ui.dialogs.TelecallingDialog
 import com.example.ui.theme.CosmicAmber
@@ -92,6 +97,7 @@ import com.example.ui.viewmodel.AuthRole
 import com.example.ui.viewmodel.MatrixModule
 import com.example.ui.viewmodel.MatrixViewModel
 import com.example.util.FormatUtils
+import com.example.util.PrintAndExcelUtils
 
 @Composable
 fun MainMatrixScreen(
@@ -183,6 +189,7 @@ fun MainMatrixScreen(
     var companyToEdit by remember { mutableStateOf<CompanyEntity?>(null) }
     var showCompanyModal by remember { mutableStateOf(false) }
     var showMasterCredentialsDialog by remember { mutableStateOf(false) }
+    var showLogoutConfirmationDialog by remember { mutableStateOf(false) }
 
     var telecallingToEdit by remember { mutableStateOf<TelecallingRecord?>(null) }
     var showTelecallingDialog by remember { mutableStateOf(false) }
@@ -204,6 +211,8 @@ fun MainMatrixScreen(
 
     var franchiseeToEdit by remember { mutableStateOf<FranchiseeRecord?>(null) }
     var showFranchiseeDialog by remember { mutableStateOf(false) }
+
+    var printExportTargetModule by remember { mutableStateOf<MatrixModule?>(null) }
 
     val activeCompanyId = currentCompany?.id ?: "comp_default"
 
@@ -463,21 +472,48 @@ fun MainMatrixScreen(
                                         showCompanyModal = true
                                     }
                                 )
+                                DropdownMenuItem(
+                                    text = {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Logout", tint = CosmicRose, modifier = Modifier.size(16.dp))
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text("Log Out Admin", color = CosmicRose, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                                        }
+                                    },
+                                    onClick = {
+                                        showCompanyDropdown = false
+                                        showLogoutConfirmationDialog = true
+                                    }
+                                )
                             }
                         }
                     }
 
                     Spacer(modifier = Modifier.width(8.dp))
 
-                    IconButton(
-                        onClick = { viewModel.lockMatrix() },
-                        modifier = Modifier.size(32.dp)
+                    // Explicit Logout Button for Both Master & User Logins
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(CosmicRose.copy(alpha = 0.15f))
+                            .border(1.dp, CosmicRose.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+                            .clickable { showLogoutConfirmationDialog = true }
+                            .padding(horizontal = 8.dp, vertical = 5.dp)
+                            .testTag("btn_logout_topbar")
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Lock,
-                            contentDescription = "Lock Matrix",
-                            tint = TextDim,
-                            modifier = Modifier.size(18.dp)
+                            imageVector = Icons.AutoMirrored.Filled.Logout,
+                            contentDescription = "Log Out",
+                            tint = CosmicRose,
+                            modifier = Modifier.size(13.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Logout",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = CosmicRose
                         )
                     }
                 }
@@ -559,52 +595,30 @@ fun MainMatrixScreen(
 
                     Spacer(modifier = Modifier.width(8.dp))
 
-                    // CSV Export Button
-                    IconButton(
-                        onClick = {
-                            when (selectedModule) {
-                                MatrixModule.TELECALLING -> {
-                                    val csv = viewModel.generateTelecallingCsv(filteredTelecalling)
-                                    FormatUtils.shareCsv(context, "Telecalling_Leads_${currentCompany?.name}.csv", csv)
-                                }
-                                MatrixModule.SALES_DVR -> {
-                                    val csv = viewModel.generateSalesDvrCsv(filteredSalesDvr)
-                                    FormatUtils.shareCsv(context, "Sales_DVR_${currentCompany?.name}.csv", csv)
-                                }
-                                MatrixModule.CUSTOMERS -> {
-                                    val csv = viewModel.generateCustomerCsv(filteredCustomers)
-                                    FormatUtils.shareCsv(context, "Customer_Records_${currentCompany?.name}.csv", csv)
-                                }
-                                MatrixModule.BANK_PENDENCY -> {
-                                    val csv = viewModel.generateBankPendencyCsv(filteredBankPendency)
-                                    FormatUtils.shareCsv(context, "Bank_Pendency_${currentCompany?.name}.csv", csv)
-                                }
-                                MatrixModule.BANKING_DVR -> {
-                                    val csv = viewModel.generateBankingDvrCsv(filteredBankingDvr)
-                                    FormatUtils.shareCsv(context, "Banking_DVR_${currentCompany?.name}.csv", csv)
-                                }
-                                MatrixModule.EMPLOYEES -> {
-                                    val csv = viewModel.generateEmployeeCsv(filteredEmployees)
-                                    FormatUtils.shareCsv(context, "Employees_${currentCompany?.name}.csv", csv)
-                                }
-                                MatrixModule.FRANCHISEES -> {
-                                    val csv = viewModel.generateFranchiseeCsv(filteredFranchisees)
-                                    FormatUtils.shareCsv(context, "Franchisees_${currentCompany?.name}.csv", csv)
-                                }
-                                else -> {}
-                            }
-                        },
+                    // Print / Excel Action Button for active category
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
-                            .size(44.dp)
+                            .height(44.dp)
                             .clip(RoundedCornerShape(10.dp))
-                            .background(SpaceCard)
-                            .border(1.dp, SpaceBorder, RoundedCornerShape(10.dp))
+                            .background(CosmicCyan.copy(alpha = 0.15f))
+                            .border(1.dp, CosmicCyan.copy(alpha = 0.4f), RoundedCornerShape(10.dp))
+                            .clickable { printExportTargetModule = selectedModule }
+                            .padding(horizontal = 12.dp)
+                            .testTag("btn_print_excel_top")
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Download,
-                            contentDescription = "Export CSV",
+                            imageVector = Icons.Default.Print,
+                            contentDescription = "Print / Export Excel",
                             tint = CosmicCyan,
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Print / Excel",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = CosmicCyan
                         )
                     }
                 }
@@ -624,8 +638,11 @@ fun MainMatrixScreen(
                             franchiseeList = franchiseeRecords,
                             onNavigateModule = { viewModel.selectModule(it) },
                             isMasterAdmin = isMasterAdmin,
+                            currentRole = currentRole,
                             companies = companies,
-                            onOpenCompanyAccessManager = { showMasterCredentialsDialog = true }
+                            onOpenCompanyAccessManager = { showMasterCredentialsDialog = true },
+                            onLogout = { showLogoutConfirmationDialog = true },
+                            onPrintSummary = { printExportTargetModule = MatrixModule.OVERVIEW }
                         )
                     }
                     MatrixModule.TELECALLING -> {
@@ -815,6 +832,120 @@ fun MainMatrixScreen(
                 showMasterCredentialsDialog = false
                 companyToEdit = null
                 showCompanyModal = true
+            }
+        )
+    }
+
+    if (showLogoutConfirmationDialog) {
+        LogoutConfirmationDialog(
+            currentRole = currentRole,
+            onDismiss = { showLogoutConfirmationDialog = false },
+            onConfirmLogout = {
+                showLogoutConfirmationDialog = false
+                viewModel.lockMatrix()
+                Toast.makeText(context, "Logged out successfully", Toast.LENGTH_SHORT).show()
+            }
+        )
+    }
+
+    printExportTargetModule?.let { targetModule ->
+        val compName = currentCompany?.name ?: "StarLink TLS123"
+        val headers: List<String>
+        val rows: List<List<String>>
+        val count: Int
+        val summaryMetrics: Map<String, String>
+
+        when (targetModule) {
+            MatrixModule.OVERVIEW -> {
+                val pair = PrintAndExcelUtils.getCustomerData(customerRecords)
+                headers = pair.first
+                rows = pair.second
+                count = customerRecords.size
+                summaryMetrics = mapOf(
+                    "Total Capacity Installed" to FormatUtils.formatKw(customerRecords.sumOf { it.plantCapacity }),
+                    "Total Installations" to "${customerRecords.size} Units / Sites",
+                    "Total Money Made" to FormatUtils.formatCurrency(customerRecords.sumOf { it.totalReceived }),
+                    "Total Pending Balance" to FormatUtils.formatCurrency(customerRecords.sumOf { it.totalProjectCost - it.totalReceived })
+                )
+            }
+            MatrixModule.TELECALLING -> {
+                val pair = PrintAndExcelUtils.getTelecallingData(filteredTelecalling)
+                headers = pair.first
+                rows = pair.second
+                count = filteredTelecalling.size
+                summaryMetrics = emptyMap()
+            }
+            MatrixModule.SALES_DVR -> {
+                val pair = PrintAndExcelUtils.getSalesDvrData(filteredSalesDvr)
+                headers = pair.first
+                rows = pair.second
+                count = filteredSalesDvr.size
+                summaryMetrics = emptyMap()
+            }
+            MatrixModule.CUSTOMERS -> {
+                val pair = PrintAndExcelUtils.getCustomerData(filteredCustomers)
+                headers = pair.first
+                rows = pair.second
+                count = filteredCustomers.size
+                summaryMetrics = mapOf(
+                    "Total kW Installed" to FormatUtils.formatKw(filteredCustomers.sumOf { it.plantCapacity }),
+                    "Total Installations" to "${filteredCustomers.size} Sites",
+                    "Total Money Made" to FormatUtils.formatCurrency(filteredCustomers.sumOf { it.totalReceived }),
+                    "Pending Balance" to FormatUtils.formatCurrency(filteredCustomers.sumOf { it.totalProjectCost - it.totalReceived })
+                )
+            }
+            MatrixModule.BANK_PENDENCY -> {
+                val pair = PrintAndExcelUtils.getBankPendencyData(filteredBankPendency)
+                headers = pair.first
+                rows = pair.second
+                count = filteredBankPendency.size
+                summaryMetrics = emptyMap()
+            }
+            MatrixModule.BANKING_DVR -> {
+                val pair = PrintAndExcelUtils.getBankingDvrData(filteredBankingDvr)
+                headers = pair.first
+                rows = pair.second
+                count = filteredBankingDvr.size
+                summaryMetrics = emptyMap()
+            }
+            MatrixModule.EMPLOYEES -> {
+                val pair = PrintAndExcelUtils.getEmployeeData(filteredEmployees)
+                headers = pair.first
+                rows = pair.second
+                count = filteredEmployees.size
+                summaryMetrics = emptyMap()
+            }
+            MatrixModule.FRANCHISEES -> {
+                val pair = PrintAndExcelUtils.getFranchiseeData(filteredFranchisees)
+                headers = pair.first
+                rows = pair.second
+                count = filteredFranchisees.size
+                summaryMetrics = emptyMap()
+            }
+        }
+
+        PrintExportDialog(
+            categoryTitle = targetModule.title,
+            recordCount = count,
+            onDismiss = { printExportTargetModule = null },
+            onExportExcel = {
+                PrintAndExcelUtils.exportToExcel(
+                    context = context,
+                    baseFileName = "${targetModule.title.replace(" ", "_")}_${compName.replace(" ", "_")}",
+                    headers = headers,
+                    rows = rows,
+                    companyName = compName
+                )
+            },
+            onPrintDocument = {
+                PrintAndExcelUtils.printTableDocument(
+                    context = context,
+                    documentTitle = "${targetModule.title} - $compName",
+                    companyName = compName,
+                    headers = headers,
+                    rows = rows,
+                    summaryMetrics = summaryMetrics
+                )
             }
         )
     }

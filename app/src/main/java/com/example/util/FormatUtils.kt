@@ -25,6 +25,14 @@ object FormatUtils {
         }
     }
 
+    fun formatKw(kw: Double): String {
+        return if (kw >= 1000.0) {
+            String.format(Locale.getDefault(), "%.2f MW", kw / 1000.0)
+        } else {
+            String.format(Locale.getDefault(), "%.2f kW", kw)
+        }
+    }
+
     fun getDynamicStatusColor(statusText: String?): Color {
         if (statusText.isNullOrBlank()) return TextDim
         val normalized = statusText.trim().lowercase(Locale.ROOT)

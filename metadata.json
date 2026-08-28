@@ -1,0 +1,6 @@
+{
+  "name": "StarLink TLS123",
+  "description": "Universe Edition - Solar Operations, Sales DVR & CRM Management Matrix",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
